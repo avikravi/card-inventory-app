@@ -1,4 +1,4 @@
-# Card Inventory App
+# Card Inventory App @dacardboiz
 
 A full-stack trading card collection tracker built with PostgreSQL, Express, and React.
 
