@@ -1,33 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "./App.css";
+import { LayoutGrid, List, Plus } from "lucide-react"; // Make sure to npm install lucide-react
 
 function App() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingCard, setEditingCard] = useState(null);
-  const [sortField, setSortField] = useState("card_id");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
   const [activeVault, setActiveVault] = useState("Baseball");
-  const [formData, setFormData] = useState({
-    card_name: "",
-    first_name: "",
-    last_name: "",
-    year: "",
-    set_name: "",
-    card_number: "",
-    team_city: "",
-    team_name: "",
-    is_rookie: false,
-    purchase_price: "0.00",
-    sold_price: "",
-    is_sold: false,
-    sold_date: "",
-    image_url: "",
-    ebay_url: "",
-  });
 
   const vaults = ["Baseball", "Basketball", "Football", "Pokemon", "Soccer"];
 
@@ -39,9 +18,8 @@ function App() {
       setCards(response.data.data);
       setLoading(false);
     } catch (err) {
-      setError("Failed to fetch cards");
+      console.error("Failed to fetch:", err);
       setLoading(false);
-      console.error(err);
     }
   };
 
@@ -49,565 +27,214 @@ function App() {
     fetchCards();
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
+  const totalValue = cards.reduce(
+    (sum, c) => sum + parseFloat(c.purchase_price || 0),
+    0,
+  );
+  const totalProfit = cards
+    .filter((c) => c.is_sold)
+    .reduce(
+      (sum, c) =>
+        sum +
+        (parseFloat(c.sold_price || 0) - parseFloat(c.purchase_price || 0)),
+      0,
+    );
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingCard) {
-        await axios.patch(
-          `https://card-inventory-app.onrender.com/api/cards/${editingCard.card_id}`,
-          formData,
-        );
-      } else {
-        await axios.post(
-          "https://card-inventory-app.onrender.com/api/cards",
-          formData,
-        );
-      }
-
-      setFormData({
-        card_name: "",
-        first_name: "",
-        last_name: "",
-        year: "",
-        set_name: "",
-        card_number: "",
-        team_city: "",
-        team_name: "",
-        is_rookie: false,
-        purchase_price: "0.00",
-        sold_price: "",
-        is_sold: false,
-        sold_date: "",
-        image_url: "",
-        ebay_url: "",
-      });
-      setShowForm(false);
-      setEditingCard(null);
-      fetchCards();
-    } catch (err) {
-      console.error("Error saving card:", err);
-      alert("Failed to save card");
-    }
-  };
-
-  const handleEdit = (card) => {
-    setEditingCard(card);
-    setFormData({
-      card_name: card.card_name,
-      first_name: card.first_name || "",
-      last_name: card.last_name || "",
-      year: card.year,
-      set_name: card.set_name,
-      card_number: card.card_number,
-      team_city: card.team_city,
-      team_name: card.team_name,
-      is_rookie: card.is_rookie,
-      purchase_price: card.purchase_price,
-      sold_price: card.sold_price || "",
-      is_sold: card.is_sold || false,
-      sold_date: card.sold_date || "",
-      image_url: card.image_url || "",
-      ebay_url: card.ebay_url || "",
-    });
-    setShowForm(true);
-  };
-
-  const handleMarkSold = async (card) => {
-    const soldPrice = prompt("Enter sold price:");
-    if (soldPrice === null) return;
-
-    const soldDate = new Date().toISOString().split("T")[0];
-
-    try {
-      await axios.patch(
-        `https://card-inventory-app.onrender.com/api/cards/${card.card_id}`,
-        {
-          ...card,
-          sold_price: parseFloat(soldPrice),
-          is_sold: true,
-          sold_date: soldDate,
-        },
-      );
-      fetchCards();
-    } catch (err) {
-      console.error("Error marking card as sold:", err);
-      alert("Failed to mark card as sold");
-    }
-  };
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setEditingCard(null);
-    setFormData({
-      card_name: "",
-      first_name: "",
-      last_name: "",
-      year: "",
-      set_name: "",
-      card_number: "",
-      team_city: "",
-      team_name: "",
-      is_rookie: false,
-      purchase_price: "0.00",
-      sold_price: "",
-      is_sold: false,
-      sold_date: "",
-      image_url: "",
-      ebay_url: "",
-    });
-  };
-
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  const getSortedCards = () => {
-    const sorted = [...cards].sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
-
-      if (
-        sortField === "year" ||
-        sortField === "purchase_price" ||
-        sortField === "sold_price"
-      ) {
-        aVal = parseFloat(aVal) || 0;
-        bVal = parseFloat(bVal) || 0;
-      }
-
-      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  };
-
-  const calculateProfit = (card) => {
-    if (card.is_sold && card.sold_price && card.purchase_price) {
-      return (
-        parseFloat(card.sold_price) - parseFloat(card.purchase_price)
-      ).toFixed(2);
-    }
-    return null;
-  };
-
-  const calculateTotalProfit = () => {
-    return cards
-      .filter((card) => card.is_sold)
-      .reduce((sum, card) => {
-        const profit =
-          parseFloat(card.sold_price || 0) -
-          parseFloat(card.purchase_price || 0);
-        return sum + profit;
-      }, 0)
-      .toFixed(2);
-  };
-
-  if (loading) return <div className="loading">Loading your vault...</div>;
-  if (error) return <div className="error">{error}</div>;
-
-  const sortedCards = getSortedCards();
-  const totalProfit = calculateTotalProfit();
-  const soldCount = cards.filter((card) => card.is_sold).length;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-sky-400 animate-pulse text-2xl font-bold">
+        Ripping Packs...
+      </div>
+    );
 
   return (
-    <div className="App">
-      <nav className="sidebar">
-        <div className="sidebar-header">
-          <h2>@dacardboiz</h2>
-          <p>Card Vaults</p>
-        </div>
-        <ul className="vault-list">
-          {vaults.map((vault) => (
-            <li
-              key={vault}
-              className={activeVault === vault ? "active" : ""}
-              onClick={() => setActiveVault(vault)}
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 flex font-sans">
+      {/* SIDEBAR */}
+      <nav className="w-64 bg-slate-900/50 border-r border-slate-800 p-6 flex flex-col backdrop-blur-md">
+        <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-8">
+          @DACARDBOIZ
+        </h1>
+        <div className="space-y-2">
+          {vaults.map((v) => (
+            <button
+              key={v}
+              onClick={() => setActiveVault(v)}
+              className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                activeVault === v
+                  ? "bg-sky-500/20 text-sky-400 border border-sky-500/50 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
+                  : "hover:bg-slate-800 text-slate-400"
+              }`}
             >
-              {vault}
-            </li>
+              {v} Vault
+            </button>
           ))}
-        </ul>
+        </div>
       </nav>
 
-      <div className="main-content">
-        <header className="vault-header">
-          <div className="header-content">
-            <h1>⚾ {activeVault} Card Vault</h1>
+      {/* MAIN CONTENT */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <header className="flex justify-between items-end mb-10">
+          <div>
+            <h2 className="text-4xl font-bold mb-1">
+              {activeVault} Collection
+            </h2>
+            <p className="text-slate-400 font-medium">Accounting & Inventory</p>
           </div>
-          <div className="stats-bar">
-            <span>Total Cards: {cards.length}</span>
-            <span>Sold: {soldCount}</span>
-            <span>
-              Total Value: $
-              {cards
-                .reduce((sum, card) => sum + parseFloat(card.purchase_price), 0)
-                .toFixed(2)}
-            </span>
-            <span
-              className={
-                parseFloat(totalProfit) >= 0
-                  ? "profit-positive"
-                  : "profit-negative"
-              }
-            >
-              Profit: ${totalProfit}
-            </span>
-            <button className="add-card-btn" onClick={() => setShowForm(true)}>
-              + Add Card
+
+          <div className="flex items-center gap-4">
+            {/* VIEW TOGGLE */}
+            <div className="bg-slate-900 p-1 rounded-xl border border-slate-700 flex">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-slate-700 text-sky-400 shadow-inner" : "text-slate-500 hover:text-slate-300"}`}
+              >
+                <LayoutGrid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`p-2 rounded-lg transition-all ${viewMode === "table" ? "bg-slate-700 text-sky-400 shadow-inner" : "text-slate-500 hover:text-slate-300"}`}
+              >
+                <List size={20} />
+              </button>
+            </div>
+
+            <button className="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold px-6 py-2.5 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-2">
+              <Plus size={20} /> Add Card
             </button>
           </div>
         </header>
 
-        {showForm && (
-          <div className="form-container" onClick={handleCloseForm}>
-            <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
-              <div className="form-header">
-                <h2>{editingCard ? "Edit Card" : "Add New Card"}</h2>
-                <button
-                  type="button"
-                  className="close-btn"
-                  onClick={handleCloseForm}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>First Name *</label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Last Name *</label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Year *</label>
-                  <input
-                    type="number"
-                    name="year"
-                    value={formData.year}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Card Number *</label>
-                  <input
-                    type="text"
-                    name="card_number"
-                    value={formData.card_number}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Set Name *</label>
-                <input
-                  type="text"
-                  name="set_name"
-                  value={formData.set_name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Team City *</label>
-                  <input
-                    type="text"
-                    name="team_city"
-                    value={formData.team_city}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Team Name *</label>
-                  <input
-                    type="text"
-                    name="team_name"
-                    value={formData.team_name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Purchase Price *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="purchase_price"
-                    value={formData.purchase_price}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group checkbox-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      name="is_rookie"
-                      checked={formData.is_rookie}
-                      onChange={handleInputChange}
-                    />
-                    Rookie Card
-                  </label>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Sold Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="sold_price"
-                    value={formData.sold_price}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Sold Date</label>
-                  <input
-                    type="date"
-                    name="sold_date"
-                    value={formData.sold_date}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div
-                className="form-group checkbox-group"
-                style={{ marginBottom: "1rem" }}
-              >
-                <label>
-                  <input
-                    type="checkbox"
-                    name="is_sold"
-                    checked={formData.is_sold}
-                    onChange={handleInputChange}
-                  />
-                  Mark as Sold
-                </label>
-              </div>
-
-              <div className="form-group">
-                <label>Image URL (eBay or other)</label>
-                <input
-                  type="url"
-                  name="image_url"
-                  value={formData.image_url}
-                  onChange={handleInputChange}
-                  placeholder="https://i.ebayimg.com/..."
-                />
-              </div>
-
-              <div className="form-group">
-                <label>eBay Listing URL</label>
-                <input
-                  type="url"
-                  name="ebay_url"
-                  value={formData.ebay_url}
-                  onChange={handleInputChange}
-                  placeholder="https://www.ebay.com/itm/..."
-                />
-              </div>
-
-              <div className="form-buttons">
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={handleCloseForm}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="submit-btn">
-                  {editingCard ? "Update Card" : "Add Card to Vault"}
-                </button>
-              </div>
-            </form>
+        {/* BENTO STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-[#1e293b] border border-slate-800 p-6 rounded-3xl shadow-xl">
+            <p className="text-slate-400 text-xs uppercase tracking-[0.2em] font-bold mb-1">
+              Total Items
+            </p>
+            <h3 className="text-3xl font-black">{cards.length}</h3>
           </div>
-        )}
+          <div className="bg-[#1e293b] border border-slate-800 p-6 rounded-3xl shadow-xl border-b-4 border-b-sky-500">
+            <p className="text-slate-400 text-xs uppercase tracking-[0.2em] font-bold mb-1">
+              Vault Value
+            </p>
+            <h3 className="text-3xl font-black text-sky-400">
+              ${totalValue.toLocaleString()}
+            </h3>
+          </div>
+          <div className="bg-[#1e293b] border border-slate-800 p-6 rounded-3xl shadow-xl border-b-4 border-b-emerald-500">
+            <p className="text-slate-400 text-xs uppercase tracking-[0.2em] font-bold mb-1">
+              Total Profit
+            </p>
+            <h3 className="text-3xl font-black text-emerald-400">
+              +${totalProfit.toLocaleString()}
+            </h3>
+          </div>
+        </div>
 
-        <div className="table-container">
-          <table className="card-table">
-            <thead>
-              <tr>
-                <th>Image</th>
-                <th className="sortable" onClick={() => handleSort("card_id")}>
-                  ID{" "}
-                  {sortField === "card_id" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </th>
-                <th>Player</th>
-                <th>Team</th>
-                <th className="sortable" onClick={() => handleSort("year")}>
-                  Year{" "}
-                  {sortField === "year" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </th>
-                <th>Set</th>
-                <th>Card #</th>
-                <th>RC</th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("purchase_price")}
-                >
-                  Buy ${" "}
-                  {sortField === "purchase_price" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </th>
-                <th
-                  className="sortable"
-                  onClick={() => handleSort("sold_price")}
-                >
-                  Sold ${" "}
-                  {sortField === "sold_price" &&
-                    (sortDirection === "asc" ? "↑" : "↓")}
-                </th>
-                <th>Profit</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedCards.map((card) => {
-                const profit = calculateProfit(card);
-                const playerName =
-                  card.first_name && card.last_name
-                    ? `${card.first_name} ${card.last_name}`
-                    : card.card_name;
-
-                return (
+        {viewMode === "grid" ? (
+          /* BENTO GRID VIEW */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {cards.map((card) => (
+              <div
+                key={card.card_id}
+                className="group bg-slate-800/40 rounded-2xl overflow-hidden border border-slate-700 hover:border-sky-500 transition-all hover:shadow-[0_0_30px_rgba(56,189,248,0.1)]"
+              >
+                <div className="aspect-[3/4] bg-slate-900 relative">
+                  {card.image_url ? (
+                    <img
+                      src={card.image_url}
+                      alt={card.card_name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-700 font-bold italic">
+                      NO IMAGE
+                    </div>
+                  )}
+                  {card.is_rookie && (
+                    <span className="absolute top-3 left-3 bg-amber-500 text-slate-900 text-[10px] font-black px-2 py-1 rounded-md shadow-lg">
+                      ROOKIE
+                    </span>
+                  )}
+                  {card.is_sold && (
+                    <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-[2px] flex items-center justify-center">
+                      <span className="border-4 border-red-500/80 text-red-500 font-black px-4 py-1 rotate-12 text-2xl uppercase tracking-widest">
+                        SOLD
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-5">
+                  <p className="text-[10px] text-sky-400 font-black uppercase tracking-widest mb-1">
+                    {card.year} {card.set_name}
+                  </p>
+                  <h4 className="font-bold text-lg leading-tight mb-3 truncate">
+                    {card.card_name || `${card.first_name} ${card.last_name}`}
+                  </h4>
+                  <div className="flex justify-between items-center border-t border-slate-700/50 pt-3">
+                    <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                      {card.team_name}
+                    </span>
+                    <span className="text-emerald-400 font-black">
+                      ${card.purchase_price}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* SPREADSHEET TABLE VIEW */
+          <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden backdrop-blur-sm">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-widest font-bold">
+                  <th className="p-4 border-b border-slate-700">Card ID</th>
+                  <th className="p-4 border-b border-slate-700">Player</th>
+                  <th className="p-4 border-b border-slate-700">Year / Set</th>
+                  <th className="p-4 border-b border-slate-700">Purchase</th>
+                  <th className="p-4 border-b border-slate-700">Sold</th>
+                  <th className="p-4 border-b border-slate-700">Status</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {cards.map((card) => (
                   <tr
                     key={card.card_id}
-                    className={card.is_sold ? "sold-row" : ""}
+                    className="hover:bg-slate-800/30 transition-colors border-b border-slate-800/50"
                   >
-                    <td
-                      className="image-cell"
-                      style={
-                        card.image_url
-                          ? { "--zoom-image": `url(${card.image_url})` }
-                          : {}
-                      }
-                    >
-                      {card.image_url ? (
-                        <img src={card.image_url} alt={playerName} />
-                      ) : (
-                        <div className="no-image">{card.card_number}</div>
-                      )}
+                    <td className="p-4 font-mono text-sky-400">
+                      {card.card_id}
                     </td>
-                    <td className="id-cell">{card.card_id}</td>
-                    <td className="player-cell">{playerName}</td>
-                    <td>
-                      {card.team_city} {card.team_name}
+                    <td className="p-4 font-bold text-slate-200">
+                      {card.card_name || `${card.first_name} ${card.last_name}`}
                     </td>
-                    <td>{card.year}</td>
-                    <td>{card.set_name}</td>
-                    <td>{card.card_number}</td>
-                    <td className="rookie-cell">
-                      {card.is_rookie ? (
-                        <span className="rookie-badge">✓</span>
-                      ) : (
-                        "—"
-                      )}
+                    <td className="p-4 text-slate-400">
+                      {card.year} {card.set_name}
                     </td>
-                    <td className="price-cell">
-                      ${parseFloat(card.purchase_price).toFixed(2)}
+                    <td className="p-4 text-emerald-400 font-bold">
+                      ${card.purchase_price}
                     </td>
-                    <td className="price-cell">
-                      {card.sold_price
-                        ? `$${parseFloat(card.sold_price).toFixed(2)}`
-                        : "—"}
+                    <td className="p-4 text-slate-300">
+                      {card.sold_price ? `$${card.sold_price}` : "—"}
                     </td>
-                    <td
-                      className={
-                        profit && parseFloat(profit) >= 0
-                          ? "profit-positive"
-                          : "profit-negative"
-                      }
-                    >
-                      {profit ? `$${profit}` : "—"}
-                    </td>
-                    <td className="status-cell">
+                    <td className="p-4">
                       {card.is_sold ? (
-                        <span className="sold-badge">SOLD</span>
+                        <span className="text-[10px] font-black bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20 uppercase">
+                          Sold
+                        </span>
                       ) : (
-                        <span className="available-badge">Available</span>
+                        <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded border border-emerald-500/20 uppercase">
+                          Stock
+                        </span>
                       )}
-                    </td>
-                    <td className="actions-cell">
-                      <div className="action-buttons">
-                        {!card.is_sold && card.ebay_url && (
-                          <a
-                            href={card.ebay_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="buy-btn"
-                          >
-                            Buy
-                          </a>
-                        )}
-                        {!card.is_sold && (
-                          <button
-                            className="sold-btn"
-                            onClick={() => handleMarkSold(card)}
-                          >
-                            Mark Sold
-                          </button>
-                        )}
-                        <button
-                          className="edit-btn"
-                          onClick={() => handleEdit(card)}
-                        >
-                          Edit
-                        </button>
-                      </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
