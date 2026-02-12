@@ -12,7 +12,6 @@ import {
   List,
 } from "lucide-react";
 
-// App function
 function App() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,7 +151,6 @@ function App() {
     return matchesCategory && matchesSearch && matchesStatus;
   });
 
-  // Calculate Stats for the top bar
   const totalValue = filteredCards.reduce(
     (acc, card) => acc + parseFloat(card.purchase_price || 0),
     0,
@@ -295,6 +293,10 @@ function App() {
                 <thead className="bg-slate-900/80 text-slate-600 text-[9px] uppercase font-black tracking-widest border-b border-slate-800">
                   <tr>
                     <th className="p-5">Asset Identification</th>
+                    <th className="p-5">Year</th>
+                    <th className="p-5">Set / Brand</th>
+                    <th className="p-5">Card #</th>
+                    <th className="p-5">Rookie</th>
                     <th className="p-5">Entry Price</th>
                     <th className="p-5">Status</th>
                     <th className="p-5 text-right">Action</th>
@@ -320,16 +322,39 @@ function App() {
                           <div className="font-bold text-slate-100">
                             {card.card_name}
                           </div>
-                          <div className="text-[8px] text-slate-500 uppercase">
-                            {card.year} {card.set_name}
-                          </div>
                         </div>
+                      </td>
+                      <td className="p-5 text-slate-400 font-mono">
+                        {card.year}
+                      </td>
+                      <td className="p-5 text-slate-400 uppercase text-[10px]">
+                        {card.set_name}
+                      </td>
+                      <td className="p-5 text-slate-400 font-mono">
+                        #{card.card_number}
+                      </td>
+                      <td className="p-5 text-slate-400">
+                        {card.is_rookie ? (
+                          <span className="bg-blue-500/10 text-blue-400 text-[8px] font-black px-2 py-1 rounded border border-blue-500/20 uppercase">
+                            RC
+                          </span>
+                        ) : (
+                          <span className="text-slate-700 text-[8px]">—</span>
+                        )}
                       </td>
                       <td className="p-5 font-mono text-slate-400">
                         ${card.purchase_price}
                       </td>
-                      <td className="p-5 font-mono text-emerald-400">
-                        {card.is_sold ? `$${card.sold_price}` : "VAULTED"}
+                      <td className="p-5">
+                        {card.is_sold ? (
+                          <span className="text-emerald-400 font-mono font-bold">
+                            REL: ${card.sold_price}
+                          </span>
+                        ) : (
+                          <span className="text-blue-500/50 font-black text-[9px] tracking-widest uppercase">
+                            Vaulted
+                          </span>
+                        )}
                       </td>
                       <td className="p-5 text-right">
                         {!card.is_sold && (
@@ -371,13 +396,18 @@ function App() {
                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-[8px] font-mono text-blue-400 px-2 py-1 rounded border border-white/10 uppercase font-bold">
                       {card.card_id}
                     </div>
+                    {card.is_rookie && (
+                      <div className="absolute top-3 right-3 bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-tighter">
+                        Rookie
+                      </div>
+                    )}
                   </div>
                   <div className="p-4 border-t border-slate-800/50">
                     <h3 className="font-bold text-slate-100 truncate text-xs">
                       {card.card_name}
                     </h3>
                     <p className="text-[9px] text-slate-500 mb-3 uppercase">
-                      {card.year} {card.set_name}
+                      {card.year} {card.set_name} #{card.card_number}
                     </p>
                     <div className="flex justify-between items-center">
                       <span className="text-emerald-500 font-mono font-bold">
@@ -484,6 +514,22 @@ function App() {
                 onChange={handleInputChange}
                 className="w-full bg-[#020617] border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-blue-500"
               />
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  name="is_rookie"
+                  id="is_rookie"
+                  checked={formData.is_rookie}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 rounded bg-slate-900 border-slate-800 text-blue-500 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="is_rookie"
+                  className="text-[10px] font-black uppercase tracking-widest text-slate-500"
+                >
+                  Rookie Identification
+                </label>
+              </div>
               <button
                 type="submit"
                 className="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20"
