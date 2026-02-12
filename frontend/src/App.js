@@ -12,6 +12,7 @@ import {
   List,
 } from "lucide-react";
 
+// App function
 function App() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
